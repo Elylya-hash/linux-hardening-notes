@@ -1,0 +1,27 @@
+# /etc/systemd/system/backup.service
+# Запускается таймером backup.timer, вручную: systemctl start backup.service
+
+[Unit]
+Description=Nightly backup of /etc and /var/www
+# Не запускать, если хранилище не смонтировано
+RequiresMountsFor=/backup
+OnFailure=notify-failure@%n.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/backup.sh -s /etc -s /var/www -d /backup -k 14
+
+# Бэкап не должен мешать основной нагрузке
+Nice=19
+IOSchedulingClass=idle
+CPUWeight=20
+
+# Читать нужно всю систему, писать — только в /backup
+ProtectSystem=strict
+ReadWritePaths=/backup
+PrivateTmp=yes
+NoNewPrivileges=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes

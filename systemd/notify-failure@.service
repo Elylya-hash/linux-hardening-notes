@@ -1,0 +1,12 @@
+# /etc/systemd/system/notify-failure@.service
+# Шаблонный юнит для OnFailure=notify-failure@%n.service
+# %i — имя упавшего юнита.
+
+[Unit]
+Description=Send notification about failed unit %i
+
+[Service]
+Type=oneshot
+# Отправляем статус и последние строки журнала упавшего юнита.
+# Замените mail на свой способ доставки.
+ExecStart=/bin/sh -c 'systemctl status --no-pager --lines=30 "%i" | mail -s "[%H] unit %i failed" root'

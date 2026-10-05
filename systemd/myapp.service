@@ -1,0 +1,87 @@
+# /etc/systemd/system/myapp.service
+# Пример юнита с изоляцией для сетевого сервиса, который слушает порт >1024
+# и пишет только в свой каталог данных.
+#
+# Оценка защищённости: systemd-analyze security myapp.service
+
+[Unit]
+Description=My application
+Documentation=https://example.com/docs
+After=network-online.target
+Wants=network-online.target
+# Не более 5 перезапусков за 60 секунд, дальше юнит переходит в failed
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+ExecStart=/opt/myapp/bin/myapp --config /etc/myapp/config.yml
+Restart=on-failure
+RestartSec=5
+
+# --- Пользователь ---
+# Отдельный пользователь создаётся на время работы сервиса и не существует
+# в /etc/passwd. Данные при этом сохраняются в StateDirectory.
+DynamicUser=yes
+
+# --- Каталоги ---
+# systemd сам создаёт их с нужным владельцем:
+# /var/lib/myapp, /var/log/myapp, /run/myapp
+StateDirectory=myapp
+LogsDirectory=myapp
+RuntimeDirectory=myapp
+ConfigurationDirectory=myapp
+
+# --- Файловая система ---
+# Вся ФС только для чтения, кроме каталогов выше
+ProtectSystem=strict
+# /home, /root и /run/user недоступны
+ProtectHome=yes
+# Свои /tmp и /var/tmp, невидимые другим процессам
+PrivateTmp=yes
+# Только /dev/null, /dev/zero, /dev/urandom и т. п.
+PrivateDevices=yes
+ProtectProc=invisible
+ProcSubset=pid
+
+# --- Ядро ---
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+
+# --- Привилегии ---
+# Запрет получать новые привилегии через setuid/setgid/capabilities
+NoNewPrivileges=yes
+# Сервису не нужны никакие capabilities. Для порта <1024 вместо этого:
+#   CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+#   AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RestrictRealtime=yes
+RestrictNamespaces=yes
+# Запрет страниц памяти, одновременно доступных на запись и исполнение.
+# Ломает JIT (Java, Node.js, PyPy) — для них директиву нужно убрать.
+MemoryDenyWriteExecute=yes
+
+# --- Системные вызовы ---
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+SystemCallErrorNumber=EPERM
+
+# --- Сеть ---
+# Только IPv4/IPv6 и unix-сокеты (никаких netlink, raw и т. п.)
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+# --- Ресурсы ---
+MemoryMax=512M
+TasksMax=200
+LimitNOFILE=65536
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

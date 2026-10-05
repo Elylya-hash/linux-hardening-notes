@@ -1,0 +1,16 @@
+# /etc/systemd/system/backup.timer
+# Включить: systemctl enable --now backup.timer
+# Посмотреть расписание: systemctl list-timers backup.timer
+
+[Unit]
+Description=Run backup.service every night
+
+[Timer]
+OnCalendar=*-*-* 02:00:00
+# Случайная задержка: серверы не начинают бэкап одновременно
+RandomizedDelaySec=30min
+# Если сервер был выключен в 02:00, выполнить после включения
+Persistent=true
+
+[Install]
+WantedBy=timers.target
